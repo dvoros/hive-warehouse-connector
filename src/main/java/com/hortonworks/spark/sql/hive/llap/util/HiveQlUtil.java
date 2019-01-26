@@ -38,6 +38,10 @@ public class HiveQlUtil {
   public final static String HIVE_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss.SSS";
   private static SimpleDateFormat sdf = null;
 
+  public static String withLimit(String query, int limit) {
+    return String.format("%s LIMIT %d", query, limit);
+  }
+
   public static String projections(String[] columns) {
     return "`" + String.join("` , `", columns) + "`";
   }

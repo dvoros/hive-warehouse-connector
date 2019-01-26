@@ -20,6 +20,7 @@ package com.hortonworks.spark.sql.hive.llap;
 import com.google.common.base.Preconditions;
 import com.hortonworks.hwc.MergeBuilder;
 import com.hortonworks.spark.sql.hive.llap.util.FunctionWith4Args;
+import com.hortonworks.spark.sql.hive.llap.pushdowns.PushDownUtil;
 import com.hortonworks.spark.sql.hive.llap.util.HiveQlUtil;
 import com.hortonworks.spark.sql.hive.llap.util.JobUtil;
 import com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil.ExecutionMethod;
@@ -91,6 +92,7 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
     executeUpdateWithPropagateException = DefaultJDBCWrapper::executeUpdate;
     sessionState.session.listenerManager().register(new LlapQueryExecutionListener());
     sessionState.session.sparkContext().addSparkListener(new HwcSparkListener());
+    PushDownUtil.injectOptimizerPushdowns(sessionState.session);
     hwcSessionStateRef = new AtomicReference<>(HwcSessionState.OPEN);
     LOG.info("Created a new HWC session: {}", sessionId);
   }

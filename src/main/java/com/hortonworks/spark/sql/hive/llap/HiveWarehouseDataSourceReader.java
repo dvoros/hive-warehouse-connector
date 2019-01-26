@@ -1,6 +1,8 @@
 package com.hortonworks.spark.sql.hive.llap;
 
+import com.hortonworks.spark.sql.hive.llap.pushdowns.PushDownUtil;
 import com.google.common.base.Preconditions;
+import com.hortonworks.spark.sql.hive.llap.pushdowns.PushDownUtil.PushDownType;
 import com.hortonworks.spark.sql.hive.llap.util.JobUtil;
 import com.hortonworks.spark.sql.hive.llap.util.SchemaUtil;
 import org.apache.hadoop.hive.llap.LlapBaseInputFormat;
@@ -16,6 +18,7 @@ import org.apache.hadoop.hive.llap.LlapInputSplit;
 import org.apache.hadoop.hive.llap.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.Function1;
 import scala.Option;
 import scala.collection.Seq;
 
@@ -24,6 +27,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -46,6 +50,14 @@ public class HiveWarehouseDataSourceReader implements DataSourceReader, Supports
 
   //The original schema
   StructType baseSchema = null;
+
+  Map<PushDownType, Function1<String, String>> pushDowns = new LinkedHashMap<>();
+
+  //Transformations are applied FIFO
+  //It is the responsibility of the injected optimizer rules to ensure correct ordering
+  public void addPushDown(PushDownType pushDownType, Function1<String, String> pushDown) {
+    pushDowns.put(pushDownType, pushDown);
+  }
 
   //SessionConfigSupport options
   Map<String, String> options;
@@ -76,7 +88,9 @@ public class HiveWarehouseDataSourceReader implements DataSourceReader, Supports
 
     Seq<Filter> filterSeq = asScalaBuffer(Arrays.asList(filters)).seq();
     String whereClause = buildWhereClause(baseSchema, filterSeq);
-    return selectProjectAliasFilter(selectCols, baseQuery, randomAlias(), whereClause);
+    String result = selectProjectAliasFilter(selectCols, baseQuery, randomAlias(), whereClause);
+    String queryWithLimitPushdown = PushDownUtil.pushDown(result, pushDowns.values());
+    return queryWithLimitPushdown;
   }
 
    StatementType getQueryType() throws Exception {

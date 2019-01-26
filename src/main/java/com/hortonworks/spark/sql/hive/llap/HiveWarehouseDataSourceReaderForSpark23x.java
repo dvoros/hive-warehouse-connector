@@ -17,10 +17,13 @@
 
 package com.hortonworks.spark.sql.hive.llap;
 
+import com.hortonworks.spark.sql.hive.llap.pushdowns.PushDownUtil;
 import org.apache.spark.sql.sources.Filter;
 import org.apache.spark.sql.sources.v2.reader.SupportsPushDownFilters;
 import org.apache.spark.sql.sources.v2.reader.SupportsPushDownRequiredColumns;
 import org.apache.spark.sql.types.StructType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -49,6 +52,8 @@ import static com.hortonworks.spark.sql.hive.llap.util.HiveQlUtil.selectStar;
  */
 public class HiveWarehouseDataSourceReaderForSpark23x extends HiveWarehouseDataSourceReader
     implements SupportsPushDownRequiredColumns, SupportsPushDownFilters {
+
+  private static Logger LOG = LoggerFactory.getLogger(HiveWarehouseDataSourceReaderForSpark23x.class);
 
   private static final Filter[] EMPTY_FILTER_ARRAY = new Filter[0];
 
@@ -144,7 +149,9 @@ public class HiveWarehouseDataSourceReaderForSpark23x extends HiveWarehouseDataS
 
     // this flag is not used anymore in current execution, resetting it for next cycle.
     currentDFHasFilterCondition = false;
-    return selectProjectAliasFilter(selectCols, baseQuery, randomAlias(), whereClause);
+    String result =  selectProjectAliasFilter(selectCols, baseQuery, randomAlias(), whereClause);
+
+    return PushDownUtil.pushDown(result, pushDowns.values());
   }
 
   private String buildFilterStringWithAndJoiner(Set<Filter> filters) {
