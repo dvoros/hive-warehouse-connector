@@ -62,6 +62,11 @@ public class HiveWarehouseConnector implements DataSourceV2, ReadSupport, Sessio
   }
 
   protected DataSourceReader getDataSourceReader(Map<String, String> params) throws IOException {
+
+    if (BooleanUtils.toBoolean(HWConf.USE_SPARK23X_SPECIFIC_READER.getFromOptionsMap(params))) {
+      return new HiveWarehouseDataSourceReaderForSpark23x(params);
+    }
+
     if (BooleanUtils.toBoolean(HWConf.DISABLE_PRUNING_AND_PUSHDOWNS.getFromOptionsMap(params))) {
       return new HiveWarehouseDataSourceReader(params);
     } else {
