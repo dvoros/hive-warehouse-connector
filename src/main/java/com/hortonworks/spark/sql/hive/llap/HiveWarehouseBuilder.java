@@ -51,6 +51,7 @@ public class HiveWarehouseBuilder {
             return null;
           }
         });
+
         return builder;
     }
 
