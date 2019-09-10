@@ -54,7 +54,7 @@ public class HiveWarehouseDataSourceReader implements DataSourceReader, Supports
 
   private final String sessionId;
 
-  public HiveWarehouseDataSourceReader(Map<String, String> options) throws IOException {
+  public HiveWarehouseDataSourceReader(Map<String, String> options) {
     this.options = options;
     sessionId = getCurrentSessionId();
   }
@@ -62,7 +62,7 @@ public class HiveWarehouseDataSourceReader implements DataSourceReader, Supports
   //if(schema is empty) -> df.count()
   //else if(using table option) -> select *
   //else -> SELECT <COLUMNS> FROM (<RAW_SQL>) WHERE <FILTER_CLAUSE>
-  String getQueryString(String[] requiredColumns, Filter[] filters) throws Exception {
+  protected String getQueryString(String[] requiredColumns, Filter[] filters) throws Exception {
     String selectCols = "count(*)";
     if (requiredColumns.length > 0) {
       selectCols = projections(requiredColumns);
@@ -79,7 +79,7 @@ public class HiveWarehouseDataSourceReader implements DataSourceReader, Supports
     return selectProjectAliasFilter(selectCols, baseQuery, randomAlias(), whereClause);
   }
 
-  private StatementType getQueryType() throws Exception {
+   StatementType getQueryType() throws Exception {
     return StatementType.fromOptions(options);
   }
 
