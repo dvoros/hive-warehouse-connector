@@ -21,7 +21,10 @@ import org.apache.spark.sql.sources.Filter;
 import org.apache.spark.sql.sources.v2.reader.SupportsPushDownFilters;
 import org.apache.spark.sql.sources.v2.reader.SupportsPushDownRequiredColumns;
 import org.apache.spark.sql.types.StructType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -52,6 +55,8 @@ public class HiveWarehouseDataSourceReaderForSpark23x extends HiveWarehouseDataS
 
   private static final Filter[] EMPTY_FILTER_ARRAY = new Filter[0];
 
+  private static Logger LOG = LoggerFactory.getLogger(HiveWarehouseDataSourceReaderForSpark23x.class);
+
   // Maintains set of all the filters that have been applied on parent->child->...dataframes.
   // While query building, these filters are OR-ed and passed to hive.
   private final Set<Set<Filter>> allFiltersToPush = new HashSet<>();
@@ -74,6 +79,7 @@ public class HiveWarehouseDataSourceReaderForSpark23x extends HiveWarehouseDataS
   public Filter[] pushedFilters() {
     // Since we have OR-ed the the filters, we need spark to do specific filtering according filters of this execution.
     // this is to let spark know that we haven't pushed any filters down.
+    logSchemaAndFilters("pushedFilters");
     return EMPTY_FILTER_ARRAY;
   }
 
@@ -81,16 +87,16 @@ public class HiveWarehouseDataSourceReaderForSpark23x extends HiveWarehouseDataS
   public void pruneColumns(StructType requiredSchema) {
     // disable pruning entirely for now except for the count case below.
     this.schema = baseSchema;
-
+    logSchemaAndFilters("pruneColumns");
     // numColumnsInPrunedSchema == 0 means user has invoked df.count()
     // if allFiltersToPush.size() <= 1 then we won't be joining different filter sets by OR
     // this means we can still push count(*) to hive and get the correct count.
-    if (requiredSchema.length() == 0 && !currentDFHasFilterCondition) {
-      this.schema = requiredSchema;
-      countStarQuery = true;
-    } else {
-      countStarQuery = false;
-    }
+//    if (requiredSchema.length() == 0 && !currentDFHasFilterCondition) {
+//      this.schema = requiredSchema;
+//      countStarQuery = true;
+//    } else {
+//      countStarQuery = false;
+//    }
   }
 
   @Override
@@ -115,6 +121,9 @@ public class HiveWarehouseDataSourceReaderForSpark23x extends HiveWarehouseDataS
       allFiltersToPush.add(filterSet);
     }
 
+    LOG.info("pushFilters: {}", Arrays.toString(filters));
+    logSchemaAndFilters("pushFilters");
+
     // unsupported filters - ones which we cannot push down to hive
     // let spark know that we haven't pushed any filters to hive
     return filters;
@@ -133,9 +142,10 @@ public class HiveWarehouseDataSourceReaderForSpark23x extends HiveWarehouseDataS
       baseQuery = options.get("query");
     }
 
-    if (countStarQuery) {
-      selectCols = "count(*)";
-    }
+//    if (countStarQuery) {
+//      selectCols = "count(*)";
+//    }
+    logSchemaAndFilters("getQueryString");
 
     final String whereClause = currentDFHasFilterCondition && !allFiltersToPush.isEmpty() ?
         " WHERE " + allFiltersToPush.stream()
@@ -144,12 +154,18 @@ public class HiveWarehouseDataSourceReaderForSpark23x extends HiveWarehouseDataS
 
     // this flag is not used anymore in current execution, resetting it for next cycle.
     currentDFHasFilterCondition = false;
-    return selectProjectAliasFilter(selectCols, baseQuery, randomAlias(), whereClause);
+    String query = selectProjectAliasFilter(selectCols, baseQuery, randomAlias(), whereClause);
+    LOG.info("query: {}", query);
+    return query;
   }
 
   private String buildFilterStringWithAndJoiner(Set<Filter> filters) {
     return "(" + filters.stream().map(filter -> FilterPushdown.buildFilterExpression(schema, filter).get())
         .collect(Collectors.joining(" AND ")) + ")";
+  }
+
+  private void logSchemaAndFilters(String additionalMessage) {
+    LOG.info("logSchemaAndFilters: additionalMessage: {}, schema:{}, allFiltersToPush:{}", additionalMessage, schema, allFiltersToPush);
   }
 
 }
