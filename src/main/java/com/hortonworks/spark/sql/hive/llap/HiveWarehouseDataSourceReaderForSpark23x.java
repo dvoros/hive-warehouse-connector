@@ -165,7 +165,7 @@ public class HiveWarehouseDataSourceReaderForSpark23x extends HiveWarehouseDataS
   }
 
   private void logSchemaAndFilters(String additionalMessage) {
-    LOG.info("logSchemaAndFilters: additionalMessage: {}, schema:{}, allFiltersToPush:{}", additionalMessage, schema, allFiltersToPush);
+    LOG.info("logSchemaAndFilters: instance: {}, additionalMessage: {}, schema:{}, allFiltersToPush:{}", this, additionalMessage, schema, allFiltersToPush);
   }
 
 }

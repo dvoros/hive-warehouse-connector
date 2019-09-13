@@ -122,7 +122,9 @@ public class HiveWarehouseDataSourceReader implements DataSourceReader, Supports
       if (schema == null) {
         this.schema = getTableSchema();
         this.baseSchema = this.schema;
+        LOG.info("readSchema: instance: {}, FOUND schema NULL. INITED TO schema:{}, baseSchema:{}", this, schema, baseSchema);
       }
+      LOG.info("readSchema: instance: {}, schema:{}, baseSchema:{}", this, schema, baseSchema);
       return schema;
     } catch (Exception e) {
       LOG.error("Unable to read table schema");
