@@ -20,15 +20,18 @@ package com.hortonworks.spark.sql.hive.llap;
 import org.apache.spark.sql.sources.Filter;
 import org.apache.spark.sql.sources.v2.reader.SupportsPushDownFilters;
 import org.apache.spark.sql.sources.v2.reader.SupportsPushDownRequiredColumns;
+import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.Option;
 
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static com.hortonworks.spark.sql.hive.llap.util.HiveQlUtil.projections;
 import static com.hortonworks.spark.sql.hive.llap.util.HiveQlUtil.randomAlias;
@@ -51,7 +54,7 @@ import static com.hortonworks.spark.sql.hive.llap.util.HiveQlUtil.selectStar;
  * this code in multiple threads for the same instance of HiveWarehouseDataSourceReaderForSpark23x.
  */
 public class HiveWarehouseDataSourceReaderForSpark23x extends HiveWarehouseDataSourceReader
-    implements SupportsPushDownRequiredColumns, SupportsPushDownFilters {
+    implements SupportsPushDownFilters {
 
   private static final Filter[] EMPTY_FILTER_ARRAY = new Filter[0];
 
@@ -79,25 +82,25 @@ public class HiveWarehouseDataSourceReaderForSpark23x extends HiveWarehouseDataS
   public Filter[] pushedFilters() {
     // Since we have OR-ed the the filters, we need spark to do specific filtering according filters of this execution.
     // this is to let spark know that we haven't pushed any filters down.
-    logSchemaAndFilters("pushedFilters");
+    //logSchemaAndFilters("pushedFilters");
     return EMPTY_FILTER_ARRAY;
   }
 
-  @Override
-  public void pruneColumns(StructType requiredSchema) {
-    // disable pruning entirely for now except for the count case below.
-    this.schema = baseSchema;
-    logSchemaAndFilters("pruneColumns");
-    // numColumnsInPrunedSchema == 0 means user has invoked df.count()
-    // if allFiltersToPush.size() <= 1 then we won't be joining different filter sets by OR
-    // this means we can still push count(*) to hive and get the correct count.
-//    if (requiredSchema.length() == 0 && !currentDFHasFilterCondition) {
-//      this.schema = requiredSchema;
-//      countStarQuery = true;
-//    } else {
-//      countStarQuery = false;
-//    }
-  }
+//  @Override
+//  public void pruneColumns(StructType requiredSchema) {
+//    // disable pruning entirely for now except for the count case below.
+//    this.schema = baseSchema;
+//    logSchemaAndFilters("pruneColumns");
+//    // numColumnsInPrunedSchema == 0 means user has invoked df.count()
+//    // if allFiltersToPush.size() <= 1 then we won't be joining different filter sets by OR
+//    // this means we can still push count(*) to hive and get the correct count.
+////    if (requiredSchema.length() == 0 && !currentDFHasFilterCondition) {
+////      this.schema = requiredSchema;
+////      countStarQuery = true;
+////    } else {
+////      countStarQuery = false;
+////    }
+//  }
 
   @Override
   public Filter[] getPushedFilters() {
