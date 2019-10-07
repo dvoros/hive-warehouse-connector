@@ -175,9 +175,8 @@ public class HiveWarehouseDataSourceReader implements DataSourceReader, Supports
       InputSplit[] splits = llapInputFormat.getSplits(jobConf, 1);
       LOG.info("Number of splits generated: {}", splits.length);
 
-      commonBroadcastInfo = prepareCommonBroadcastInfo(splits);
-
       if (splits.length > 2) {
+        commonBroadcastInfo = prepareCommonBroadcastInfo(splits);
         LOG.info("Serializing {} actual splits to send to executors", (splits.length - 2));
         byte[] serializedJobConf = JobUtil.serializeJobConf(jobConf);
 
@@ -188,6 +187,8 @@ public class HiveWarehouseDataSourceReader implements DataSourceReader, Supports
         }
         long end = System.currentTimeMillis();
         LOG.info("Serialized {} actual splits in {} millis", (splits.length - 2), (end - start));
+      } else {
+        LOG.warn("No actual splits generated for query: {}", query);
       }
     } catch (IOException e) {
       LOG.error("Unable to submit query to HS2");
