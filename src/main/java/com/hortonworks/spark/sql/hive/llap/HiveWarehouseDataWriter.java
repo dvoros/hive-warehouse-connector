@@ -36,12 +36,18 @@ public class HiveWarehouseDataWriter implements DataWriter<InternalRow> {
     this.schema = schema;
     this.partitionId = partitionId;
     this.attemptNumber = attemptNumber;
-    this.fs = fs;
+    try {
+      this.fs = FileSystem.newInstance(filePath.toUri(), conf);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
     this.filePath = filePath;
     this.sparkToHiveRecordMapper = sparkToHiveRecordMapper;
     conf.set("orc.mapred.output.schema", sparkToHiveRecordMapper.getSchemaInHiveColumnsOrder().catalogString());
     TaskAttemptContext tac = new TaskAttemptContextImpl(conf, new TaskAttemptID());
     this.out = getOutputWriter(filePath.toString(), sparkToHiveRecordMapper.getSchemaInHiveColumnsOrder(), tac);
+    logInfo("CREATED...");
+
   }
 
   @Override public void write(InternalRow record) throws IOException {
@@ -50,19 +56,31 @@ public class HiveWarehouseDataWriter implements DataWriter<InternalRow> {
 
   @Override public WriterCommitMessage commit() throws IOException {
     out.close();
+    long len = fs.getFileStatus(filePath).getLen();
+    logInfo("COMMITTING....Written " + len + " bytes to ORC file.");
+    if (len == 0) {
+      throw new IllegalStateException("Writer " + this + " wrote 0 length ORC file which is not valid");
+    }
+    fs.close();
     return new SimpleWriterCommitMessage(String.format("COMMIT %s_%s_%s", jobId, partitionId, attemptNumber));
   }
 
   @Override public void abort() throws IOException {
     LOG.info("Driver sent abort for {}_{}_{}", jobId, partitionId, attemptNumber);
+    logInfo("ABORT RECEIVED FROM DRIVER...");
     try {
       out.close();
     } finally {
       fs.delete(filePath, false);
+      fs.close();
     }
   }
 
   protected OutputWriter getOutputWriter(String path, StructType schema, TaskAttemptContext tac) {
     return new OrcOutputWriter(path, schema, tac);
+  }
+
+  private void logInfo(String msg) {
+    LOG.info("HiveWarehouseDataWriter: {}, path: {}, msg:{} ", this, filePath, msg);
   }
 }
