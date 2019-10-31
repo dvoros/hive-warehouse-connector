@@ -93,6 +93,7 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
     sessionState.session.sparkContext().addSparkListener(new HwcSparkListener());
     hwcSessionStateRef = new AtomicReference<>(HwcSessionState.OPEN);
     LOG.info("Created a new HWC session: {}", sessionId);
+    LOG.info("======================HDP-3.1.4.14-1-tag-BUG-122013-dev-jar========================");
   }
 
   private enum HwcSessionState {
