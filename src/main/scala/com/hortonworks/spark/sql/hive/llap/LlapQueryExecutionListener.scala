@@ -17,6 +17,8 @@
 
 package com.hortonworks.spark.sql.hive.llap
 
+import com.hortonworks.spark.sql.hive.llap.readers.scalar
+import com.hortonworks.spark.sql.hive.llap.readers.scalar.HiveWarehouseDataSourceReader
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.execution._
 import org.apache.spark.sql.util.QueryExecutionListener
@@ -33,8 +35,8 @@ class LlapQueryExecutionListener extends QueryExecutionListener with Logging {
         r.relation.asInstanceOf[LlapRelation].close()
         logInfo(s"Closing Hive connection via ${classOf[LlapRelation].getName}")
       case s: DataSourceV2ScanExec if s.reader.isInstanceOf[HiveWarehouseDataSourceReader] =>
-        s.reader.asInstanceOf[HiveWarehouseDataSourceReader].close()
-        logInfo(s"Closing Hive connection via ${classOf[HiveWarehouseDataSourceReader].getName}")
+        s.reader.asInstanceOf[scalar.HiveWarehouseDataSourceReader].close()
+        logInfo(s"Closing Hive connection via ${classOf[scalar.HiveWarehouseDataSourceReader].getName}")
       case _ =>
     }
   }

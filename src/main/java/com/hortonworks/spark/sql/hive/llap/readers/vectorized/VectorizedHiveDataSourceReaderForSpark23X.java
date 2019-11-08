@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.hortonworks.spark.sql.hive.llap;
+package com.hortonworks.spark.sql.hive.llap.readers.vectorized;
 
 import org.apache.spark.sql.sources.Filter;
 
@@ -29,16 +29,16 @@ import java.util.Map;
  * <p>
  * This implementation is not thread safe.
  * Since this is runs in spark driver, it is assumed that spark internally never invokes
- * this code in multiple threads for the same instance of HiveWarehouseDataSourceReaderForSpark23x.
+ * this code in multiple threads for the same instance of VectorizedHiveDataSourceReaderForSpark23X.
  */
-public class HiveWarehouseDataSourceReaderForSpark23x extends HiveWarehouseDataSourceReaderWithFilterPushDown {
+public class VectorizedHiveDataSourceReaderForSpark23X extends VectorizedHiveDataSourceReaderWithFilterPushDown {
 
   /**
    * this flag is set when pushFilters() is invoked by spark, which indicates that we have presence of filters somewhere in the df lineage.
    */
   private boolean currentDFHasFilterCondition = false;
 
-  public HiveWarehouseDataSourceReaderForSpark23x(Map<String, String> options) {
+  public VectorizedHiveDataSourceReaderForSpark23X(Map<String, String> options) {
     super(options);
   }
 

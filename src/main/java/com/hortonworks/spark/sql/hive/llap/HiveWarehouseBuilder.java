@@ -17,14 +17,15 @@
 
 package com.hortonworks.spark.sql.hive.llap;
 
+import com.hortonworks.spark.sql.hive.llap.common.HWConf;
 import org.apache.spark.sql.SparkSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Tuple2;
 
-import static com.hortonworks.spark.sql.hive.llap.HWConf.HIVESERVER2_CREDENTIAL_ENABLED;
-import static com.hortonworks.spark.sql.hive.llap.HWConf.HIVESERVER2_JDBC_URL;
-import static com.hortonworks.spark.sql.hive.llap.HWConf.HIVESERVER2_JDBC_URL_PRINCIPAL;
+import static com.hortonworks.spark.sql.hive.llap.common.HWConf.HIVESERVER2_CREDENTIAL_ENABLED;
+import static com.hortonworks.spark.sql.hive.llap.common.HWConf.HIVESERVER2_JDBC_URL;
+import static com.hortonworks.spark.sql.hive.llap.common.HWConf.HIVESERVER2_JDBC_URL_PRINCIPAL;
 
 public class HiveWarehouseBuilder {
 
@@ -60,8 +61,8 @@ public class HiveWarehouseBuilder {
     }
 
     public HiveWarehouseBuilder userPassword(String user, String password) {
-      HWConf.USER.setString(sessionState, user);
-      HWConf.PASSWORD.setString(sessionState, password);
+      com.hortonworks.spark.sql.hive.llap.common.HWConf.USER.setString(sessionState, user);
+      com.hortonworks.spark.sql.hive.llap.common.HWConf.PASSWORD.setString(sessionState, password);
         return this;
     }
 
@@ -83,23 +84,23 @@ public class HiveWarehouseBuilder {
     //Hive JDBC doesn't support java.sql.Statement.setLargeMaxResults(long)
     //Need to use setMaxResults(int) instead
     public HiveWarehouseBuilder maxExecResults(int maxExecResults) {
-      HWConf.MAX_EXEC_RESULTS.setInt(sessionState, maxExecResults);
+      com.hortonworks.spark.sql.hive.llap.common.HWConf.MAX_EXEC_RESULTS.setInt(sessionState, maxExecResults);
         return this;
     }
 
     public HiveWarehouseBuilder dbcp2Conf(String dbcp2Conf) {
-      HWConf.DBCP2_CONF.setString(sessionState, dbcp2Conf);
+      com.hortonworks.spark.sql.hive.llap.common.HWConf.DBCP2_CONF.setString(sessionState, dbcp2Conf);
         return this;
     }
 
     public HiveWarehouseBuilder defaultDB(String defaultDB) {
-      HWConf.DEFAULT_DB.setString(sessionState, defaultDB);
+      com.hortonworks.spark.sql.hive.llap.common.HWConf.DEFAULT_DB.setString(sessionState, defaultDB);
         return this;
     }
 
     //This is the only way for application to obtain a HiveWarehouseSessionImpl
     public HiveWarehouseSessionImpl build() {
-      HWConf.RESOLVED_HS2_URL.setString(sessionState, HWConf.getConnectionUrl(sessionState));
+      com.hortonworks.spark.sql.hive.llap.common.HWConf.RESOLVED_HS2_URL.setString(sessionState, HWConf.getConnectionUrl(sessionState));
         return new HiveWarehouseSessionImpl(this.sessionState);
     }
 

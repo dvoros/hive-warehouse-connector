@@ -8,6 +8,11 @@ import java.util.Map;
 
 import com.google.common.collect.Lists;
 import com.hortonworks.spark.sql.hive.llap.common.CommonBroadcastInfo;
+import com.hortonworks.spark.sql.hive.llap.common.HWConf;
+import com.hortonworks.spark.sql.hive.llap.readers.vectorized.VectorizedHiveDataSourceReaderForSpark23X;
+import com.hortonworks.spark.sql.hive.llap.readers.vectorized.PrunedFilteredVectorizedHiveDataSourceReader;
+import com.hortonworks.spark.sql.hive.llap.readers.vectorized.VectorizedHiveWarehouseDataReader;
+import com.hortonworks.spark.sql.hive.llap.readers.vectorized.VectorizedHiveWarehouseDataReaderFactory;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.IntVector;
@@ -49,9 +54,9 @@ public class MockHiveWarehouseConnector extends HiveWarehouseConnector {
   protected DataSourceReader getDataSourceReader(Map<String, String> params) throws IOException {
     incrementDataSourceReaderCount();
     if (BooleanUtils.toBoolean(HWConf.USE_SPARK23X_SPECIFIC_READER.getFromOptionsMap(params))) {
-      return new MockHiveWarehouseDataSourceReaderForSpark23x(params);
+      return new MockVectorizedHiveDataSourceReaderForSpark23X(params);
     }
-    return new MockHiveWarehouseDataSourceReader(params);
+    return new MockVectorizedHiveDataSourceReader(params);
   }
 
   private void incrementDataSourceReaderCount() {
@@ -72,7 +77,7 @@ public class MockHiveWarehouseConnector extends HiveWarehouseConnector {
     return new MockWriteSupport.MockHiveWarehouseDataSourceWriter(options, jobId, schema, path, conf, mode);
   }
 
-  public static class MockHiveWarehouseDataReader extends HiveWarehouseDataReader {
+  public static class MockHiveWarehouseDataReader extends VectorizedHiveWarehouseDataReader {
 
     public MockHiveWarehouseDataReader(LlapInputSplit split, JobConf conf, long arrowAllocatorMax) throws Exception {
       super(split, conf, arrowAllocatorMax, null);
@@ -90,7 +95,7 @@ public class MockHiveWarehouseConnector extends HiveWarehouseConnector {
     }
   }
 
-  public static class MockHiveWarehouseDataReaderFactory extends HiveWarehouseDataReaderFactory {
+  public static class MockHiveWarehouseDataReaderFactory extends VectorizedHiveWarehouseDataReaderFactory {
 
     public MockHiveWarehouseDataReaderFactory(InputSplit split, JobConf jobConf, long arrowAllocatorMax) {
     }
@@ -115,9 +120,9 @@ public class MockHiveWarehouseConnector extends HiveWarehouseConnector {
     }
   }
 
-  public static class MockHiveWarehouseDataSourceReader extends PrunedFilteredHiveWarehouseDataSourceReader {
+  public static class MockVectorizedHiveDataSourceReader extends PrunedFilteredVectorizedHiveDataSourceReader {
 
-    public MockHiveWarehouseDataSourceReader(Map<String, String> options) throws IOException {
+    public MockVectorizedHiveDataSourceReader(Map<String, String> options) throws IOException {
       super(options);
     }
 
@@ -143,11 +148,11 @@ public class MockHiveWarehouseConnector extends HiveWarehouseConnector {
 
   }
 
-  public static class MockHiveWarehouseDataSourceReaderForSpark23x extends HiveWarehouseDataSourceReaderForSpark23x {
+  public static class MockVectorizedHiveDataSourceReaderForSpark23X extends VectorizedHiveDataSourceReaderForSpark23X {
 
     public static final String FINAL_HIVE_QUERY_KEY = "FINAL_HIVE_QUERY";
 
-    public MockHiveWarehouseDataSourceReaderForSpark23x(Map<String, String> options) {
+    public MockVectorizedHiveDataSourceReaderForSpark23X(Map<String, String> options) {
       super(options);
     }
 

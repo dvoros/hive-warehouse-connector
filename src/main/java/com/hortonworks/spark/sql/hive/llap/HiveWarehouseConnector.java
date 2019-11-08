@@ -1,6 +1,13 @@
 package com.hortonworks.spark.sql.hive.llap;
 
 import com.google.common.base.Preconditions;
+import com.hortonworks.spark.sql.hive.llap.common.HWConf;
+import com.hortonworks.spark.sql.hive.llap.readers.scalar.HiveDataSourceReaderForSpark23X;
+import com.hortonworks.spark.sql.hive.llap.readers.scalar.HiveWarehouseDataSourceReader;
+import com.hortonworks.spark.sql.hive.llap.readers.scalar.PrunedFilteredHiveDataSourceReader;
+import com.hortonworks.spark.sql.hive.llap.readers.vectorized.PrunedFilteredVectorizedHiveDataSourceReader;
+import com.hortonworks.spark.sql.hive.llap.readers.vectorized.VectorizedHiveDataSourceReaderForSpark23X;
+import com.hortonworks.spark.sql.hive.llap.readers.vectorized.VectorizedHiveWarehouseDataSourceReader;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -22,12 +29,13 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.hortonworks.spark.sql.hive.llap.HWConf.DISABLE_PRUNING_AND_PUSHDOWNS;
-import static com.hortonworks.spark.sql.hive.llap.HWConf.USE_SPARK23X_SPECIFIC_READER;
+import static com.hortonworks.spark.sql.hive.llap.common.HWConf.DISABLE_PRUNING_AND_PUSHDOWNS;
+import static com.hortonworks.spark.sql.hive.llap.common.HWConf.USE_SPARK23X_SPECIFIC_READER;
+import static com.hortonworks.spark.sql.hive.llap.common.HWConf.VECTORIZED_READER_COLUMNS_LIMIT;
 
 /*
  * Driver:
- *   UserCode -> HiveWarehouseConnector -> HiveWarehouseDataSourceReader -> HiveWarehouseDataReaderFactory
+ *   UserCode -> HiveWarehouseConnector -> VectorizedHiveWarehouseDataSourceReader -> HiveWarehouseDataReaderFactory
  * Task serializer:
  *   HiveWarehouseDataReaderFactory (Driver) -> bytes -> HiveWarehouseDataReaderFactory (Executor task)
  * Executor:
@@ -51,7 +59,7 @@ public class HiveWarehouseConnector implements DataSourceV2, ReadSupport, Sessio
   public Optional<DataSourceWriter> createWriter(String jobId, StructType schema,
       SaveMode mode, DataSourceOptions options) {
     Map<String, String> params = getOptions(options);
-    String stagingDirPrefix = HWConf.LOAD_STAGING_DIR.getFromOptionsMap(params);
+    String stagingDirPrefix = com.hortonworks.spark.sql.hive.llap.common.HWConf.LOAD_STAGING_DIR.getFromOptionsMap(params);
     Path path = new Path(stagingDirPrefix);
     Configuration conf = SparkSession.getActiveSession().get().sparkContext().hadoopConfiguration();
     return Optional.of(getDataSourceWriter(jobId, schema, path, params, conf, mode));
@@ -66,24 +74,56 @@ public class HiveWarehouseConnector implements DataSourceV2, ReadSupport, Sessio
   }
 
   protected DataSourceReader getDataSourceReader(Map<String, String> params) throws IOException {
-
     boolean useSpark23xReader = BooleanUtils.toBoolean(USE_SPARK23X_SPECIFIC_READER.getFromOptionsMap(params));
     boolean disablePruningPushdown = BooleanUtils.toBoolean(DISABLE_PRUNING_AND_PUSHDOWNS.getFromOptionsMap(params));
 
     LOG.info("Found reader configuration - {}={}, {}={}", USE_SPARK23X_SPECIFIC_READER.getQualifiedKey(), useSpark23xReader,
         DISABLE_PRUNING_AND_PUSHDOWNS.getQualifiedKey(), disablePruningPushdown);
 
+    DataSourceReader vectorizedDataSourceReader
+            = getDataSourceReader(params, useSpark23xReader, disablePruningPushdown, true);
+
+    // If the number of projected columns exceed the supported limit for vectorized reader, then use non-vectorized reader
+    int columnsLimitForVectorizedReader = Integer.parseInt(HWConf.VECTORIZED_READER_COLUMNS_LIMIT.getFromOptionsMap(params));
+    Preconditions.checkState(columnsLimitForVectorizedReader > 0,
+            HWConf.INVALID_VECTORIZED_READER_COLUMNS_LIMIT_CONFIG_ERR_MSG);
+    if (vectorizedDataSourceReader.readSchema().length() > columnsLimitForVectorizedReader) {
+      // Return non-vectorized data source reader
+      return getDataSourceReader(params, useSpark23xReader, disablePruningPushdown, false);
+    }
+    return vectorizedDataSourceReader;
+  }
+
+  private DataSourceReader getDataSourceReader(Map<String, String> params,
+                                               boolean useSpark23xReader,
+                                               boolean disablePruningPushdown,
+                                               boolean useVectorizedReader) {
     Preconditions.checkState(!(useSpark23xReader && disablePruningPushdown), HWConf.INVALID_READER_CONFIG_ERR_MSG);
 
     if (useSpark23xReader) {
-      LOG.info("Using reader HiveWarehouseDataSourceReaderForSpark23x with column pruning disabled");
-      return new HiveWarehouseDataSourceReaderForSpark23x(params);
+      if (useVectorizedReader) {
+        LOG.info("Using reader VectorizedHiveDataSourceReaderForSpark23X with column pruning disabled");
+        return new VectorizedHiveDataSourceReaderForSpark23X(params);
+      } else {
+        LOG.info("Using reader HiveDataSourceReaderForSpark23X with column pruning disabled");
+        return new HiveDataSourceReaderForSpark23X(params);
+      }
     } else if (disablePruningPushdown) {
-      LOG.info("Using reader HiveWarehouseDataSourceReader with column pruning and filter pushdown disabled");
-      return new HiveWarehouseDataSourceReader(params);
+      if (useVectorizedReader) {
+        LOG.info("Using reader VectorizedHiveWarehouseDataSourceReader with column pruning and filter pushdown disabled");
+        return new VectorizedHiveWarehouseDataSourceReader(params);
+      } else {
+        LOG.info("Using reader HiveWarehouseDataSourceReader with column pruning and filter pushdown disabled");
+        return new HiveWarehouseDataSourceReader(params);
+      }
     } else {
-      LOG.info("Using reader PrunedFilteredHiveWarehouseDataSourceReader");
-      return new PrunedFilteredHiveWarehouseDataSourceReader(params);
+      if (useVectorizedReader) {
+        LOG.info("Using reader PrunedFilteredVectorizedHiveDataSourceReader");
+        return new PrunedFilteredVectorizedHiveDataSourceReader(params);
+      } else {
+        LOG.info("Using reader PrunedFilteredHiveDataSourceReader");
+        return new PrunedFilteredHiveDataSourceReader(params);
+      }
     }
   }
 

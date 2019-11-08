@@ -1,4 +1,4 @@
-package com.hortonworks.spark.sql.hive.llap;
+package com.hortonworks.spark.sql.hive.llap.readers.vectorized;
 
 import java.io.IOException;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
@@ -7,10 +7,10 @@ import org.apache.spark.sql.sources.v2.reader.DataReader;
 import org.apache.spark.sql.vectorized.ColumnVector;
 import org.apache.spark.sql.types.DataTypes;
 
-public class CountDataReader implements DataReader<ColumnarBatch> {
+public class VectorizedCountDataReader implements DataReader<ColumnarBatch> {
   private long numRows;
 
-  public CountDataReader(long numRows) {
+  public VectorizedCountDataReader(long numRows) {
     this.numRows = numRows;
   }
 

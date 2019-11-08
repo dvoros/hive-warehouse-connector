@@ -1,4 +1,4 @@
-package com.hortonworks.spark.sql.hive.llap;
+package com.hortonworks.spark.sql.hive.llap.readers.scalar;
 
 import com.hortonworks.spark.sql.hive.llap.common.CommonBroadcastInfo;
 import org.apache.hadoop.hive.llap.LlapInputSplit;
@@ -6,14 +6,14 @@ import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.spark.sql.sources.v2.reader.DataReader;
 import org.apache.spark.sql.sources.v2.reader.DataReaderFactory;
-import org.apache.spark.sql.vectorized.ColumnarBatch;
+import org.apache.spark.sql.Row;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 
-public class HiveWarehouseDataReaderFactory implements DataReaderFactory<ColumnarBatch> {
+public class HiveWarehouseDataReaderFactory implements DataReaderFactory<Row> {
     private byte[] splitBytes;
     private byte[] confBytes;
     private transient InputSplit split;
@@ -24,8 +24,8 @@ public class HiveWarehouseDataReaderFactory implements DataReaderFactory<Columna
     public HiveWarehouseDataReaderFactory() {}
 
     //Driver-side setup
-    public HiveWarehouseDataReaderFactory(InputSplit split, byte[] serializedJobConf, long arrowAllocatorMax,
-                                          CommonBroadcastInfo commonBroadcastInfo) {
+    public HiveWarehouseDataReaderFactory(InputSplit split, byte[] serializedJobConf,
+                                          long arrowAllocatorMax, CommonBroadcastInfo commonBroadcastInfo) {
         this.split = split;
         this.arrowAllocatorMax = arrowAllocatorMax;
         this.commonBroadcastInfo = commonBroadcastInfo;
@@ -52,7 +52,7 @@ public class HiveWarehouseDataReaderFactory implements DataReaderFactory<Columna
     }
 
     @Override
-    public DataReader<ColumnarBatch> createDataReader() {
+    public DataReader<Row> createDataReader() {
         LlapInputSplit llapInputSplit = new LlapInputSplit();
         ByteArrayInputStream splitByteArrayStream = new ByteArrayInputStream(splitBytes);
         ByteArrayInputStream confByteArrayStream = new ByteArrayInputStream(confBytes);
@@ -62,13 +62,13 @@ public class HiveWarehouseDataReaderFactory implements DataReaderFactory<Columna
             DataInputStream confByteData = new DataInputStream(confByteArrayStream)) {
             llapInputSplit.readFields(splitByteData);
             conf.readFields(confByteData);
-            return getDataReader(llapInputSplit, conf, arrowAllocatorMax, commonBroadcastInfo);
+            return getDataReader(llapInputSplit, conf, commonBroadcastInfo);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    protected DataReader<ColumnarBatch> getDataReader(LlapInputSplit split, JobConf jobConf, long arrowAllocatorMax, CommonBroadcastInfo commonBroadcastInfo)
+    protected DataReader<Row> getDataReader(LlapInputSplit split, JobConf jobConf, CommonBroadcastInfo commonBroadcastInfo)
         throws Exception {
         return new HiveWarehouseDataReader(split, jobConf, arrowAllocatorMax, commonBroadcastInfo);
     }
