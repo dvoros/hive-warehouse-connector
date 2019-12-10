@@ -166,6 +166,12 @@ excludeDependencies ++= Seq(
   "com.sun.jersey" % "*",
   "org.codehaus.groovy" % "*"
 )
+
+libraryDependencies += "org.apache.thrift" % "libfb303" % "0.9.3" jar()
+
+dependencyOverrides += "org.apache.thrift" % "libfb303" % "0.9.3" jar()
+dependencyOverrides += "org.apache.thrift" % "libthrift" % "0.9.3-1"
+
 dependencyOverrides += "com.google.guava" % "guava" % "28.0-jre"
 dependencyOverrides += "commons-codec" % "commons-codec" % "1.10"
 dependencyOverrides += "commons-logging" % "commons-logging" % "1.2"
@@ -201,6 +207,8 @@ assemblyShadeRules in assembly := Seq(
   ShadeRule.rename("org.apache.curator.**" -> "shadecurator.@0").inAll,
   ShadeRule.rename("org.apache.orc.**" -> "shadeorc@0").inAll,
   ShadeRule.rename("org.apache.derby.**" -> "shadederby.@0").inAll,
+  ShadeRule.rename("org.apache.thrift.**" -> "shadethrift.@0").inAll,
+  ShadeRule.rename("com.facebook.fb303.**" -> "shadethrift.@0").inAll,
   ShadeRule.rename("io.netty.**" -> "shadenetty.@0").inAll,
   ShadeRule.rename("org.jboss.netty.**" -> "shadejbossnetty.@0").inAll,
   ShadeRule.rename("org.codehaus.jackson.**" -> "shadejackson.@0").inAll,
