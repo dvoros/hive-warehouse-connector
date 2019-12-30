@@ -65,6 +65,9 @@ public enum HWConf {
   //possible values - client/cluster. default - client
   public static final String SPARK_SUBMIT_DEPLOYMODE = "spark.submit.deployMode";
   public static final String PARTITION_OPTION_KEY = "partition";
+  public static final String HWC_EXECUTION_MODE = "spark.sql.hive.hwc.execution.mode";
+  public static final String HWC_EXECUTION_MODE_LLAP = "llap";
+  public static final String HWC_EXECUTION_MODE_SPARK = "spark";
 
   public String getQualifiedKey() {
     return qualifiedKey;
@@ -78,6 +81,13 @@ public enum HWConf {
   public void setInt(HiveWarehouseSessionState state, Integer value) {
     state.props.put(qualifiedKey, Integer.toString(value));
     state.session.sessionState().conf().setConfString(qualifiedKey, Integer.toString(value));
+  }
+
+  public static String getHwcExecutionMode(HiveWarehouseSessionState state) {
+    if (state.session.conf().contains(HWC_EXECUTION_MODE)) {
+      return state.session.conf().get(HWC_EXECUTION_MODE);
+    }
+    return HWC_EXECUTION_MODE_LLAP;
   }
 
   //This is called from executors so it can't depend explicitly on session state
@@ -115,7 +125,7 @@ public enum HWConf {
     String userString = USER.getString(state);
     if (userString == null) {
       userString = "";
-}
+    }
     String urlString = getConnectionUrlFromConf(state);
     String returnValue = urlString.replace("${user}", userString);
     LOG.info("Using HS2 URL: {}", returnValue);

@@ -90,4 +90,6 @@ public interface HiveWarehouseSession {
      * Closes the HWC session. Session cannot be reused after being closed.
      */
     void close();
+
+    void commitSparkAcidReadTxn(SparkSession sparkSession);
 }

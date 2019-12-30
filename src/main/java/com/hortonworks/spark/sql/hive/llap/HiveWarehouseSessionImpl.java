@@ -122,6 +122,9 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
 
   private Dataset<Row> executeQueryInternal(String sql, Integer numSplitsToDemand) {
     ensureSessionOpen();
+    if (HWConf.getHwcExecutionMode(sessionState).equals(HWConf.HWC_EXECUTION_MODE_SPARK)) {
+      return session().sql(sql);
+    }
     DataFrameReader dfr = session().read().format(HIVE_WAREHOUSE_CONNECTOR_INTERNAL).option("query", sql)
         .option(HWC_SESSION_ID_KEY, sessionId);
     if (numSplitsToDemand != null) {
@@ -309,12 +312,33 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
 
   @Override
   public void close() {
+    try {
+      if (HWConf.getHwcExecutionMode(sessionState).equals(HWConf.HWC_EXECUTION_MODE_SPARK)) {
+        com.qubole.spark.hiveacid.transaction.HiveAcidTxnStore.endTxn(session(), false);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to commit spark-acid transaction", e);
+    }
+
     Preconditions.checkState(hwcSessionStateRef.compareAndSet(HwcSessionState.OPEN, HwcSessionState.CLOSED),
         SESSION_CLOSED_MSG);
     try {
       closeSessionResources(sessionId);
     } catch (IOException e) {
       throw new RuntimeException("Error while closing resources attached to session: " + sessionId);
+    }
+  }
+
+  // This method is used to commit the read transaction started internally by spark acid reader. This will
+  // release the locks aqquired by the reader. The next read after this will start a new read transaction
+  // and thus will be able to read the latest data with a new snapshot.
+  @Override
+  public void commitSparkAcidReadTxn(SparkSession sparkSession) {
+    try {
+      com.qubole.spark.hiveacid.transaction.HiveAcidTxnStore.endTxn(sparkSession, false);
+    } catch (Exception e) {
+      LOG.error("Failed to commit spark-acid transaction", e);
+      throw new RuntimeException("Failed to commit spark-acid transaction");
     }
   }
 
